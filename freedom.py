@@ -44,8 +44,8 @@ class Bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (int(self.size[0]*0.2), int(self.size[1]*0.2)))
 
         self.rect = self.image.get_rect()
-        self.rect.centerx = soldier1.rect.x
-        self.rect.centery = soldier1.rect.y
+        self.rect.x = soldier1.rect.x
+        self.rect.y = soldier1.rect.y
         self.mousex = pygame.mouse.get_pos()[0]
         self.mousey = pygame.mouse.get_pos()[1]
 
@@ -118,12 +118,14 @@ while True:
         if event.type == MOUSEBUTTONDOWN:
             #print(pygame.mouse.get_pos())
             if pygame.mouse.get_pressed()[0] == 1: # (left mb,right mb, scroller?) -> (0/1,0/1,?)
+                print('draw box')
+        if event.type == pygame.KEYDOWN:
+            if event.key == K_SPACE:
                 createBullet()
 
     all_sprites_list.update() # This is a nice feature to quickly call the update()
     #method for all of the sprites in this list.
 
-    # Calculate bullet trajectories (to come soon)
     for bullet in bullet_list:
         # Remove the bullet when out of bounds
         if bullet.rect.y < -5 or bullet.rect.x < -5:
@@ -132,7 +134,7 @@ while True:
 
 
     BACKGROUND_SURFACE.fill(color_white)# Clear the screen
-    all_sprites_list.draw(BACKGROUND_SURFACE)# Draw all the spites
+    all_sprites_list.draw(BACKGROUND_SURFACE)# Draw all the sprites
 
     #Events handled and possibly game state changed: update display accordingly
     pygame.display.flip()# Go ahead and update the screen with what we've drawn.
