@@ -5,7 +5,7 @@ Regarding project code: Copyright 2017, Wouter Haaxman, All rights reserved.
 
 useful links (used/tweaked parts to implement here):
 https://www.pygame.org/docs
-
+http://programarcadegames.com/python_examples/f.php?file=bullets.py
 '''
 
 import sys
