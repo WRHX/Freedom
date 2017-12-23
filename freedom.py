@@ -6,9 +6,11 @@ Regarding project code: Copyright 2017, Wouter Haaxman, All rights reserved.
 useful links (used/tweaked parts to implement here):
 https://www.pygame.org/docs
 http://programarcadegames.com/python_examples/f.php?file=bullets.py
+https://www.soundjay.com/gun-sound-effect.html(source of gunshot sound)
 '''
 
 import sys
+import math
 import pygame
 from pygame.locals import *
 
@@ -42,16 +44,46 @@ class Bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (int(self.size[0]*0.2), int(self.size[1]*0.2)))
 
         self.rect = self.image.get_rect()
+        self.rect.centerx = soldier1.rect.x
+        self.rect.centery = soldier1.rect.y
+        self.mousex = pygame.mouse.get_pos()[0]
+        self.mousey = pygame.mouse.get_pos()[1]
 
+        self.dx = self.mousex - self.rect.centerx
+        self.dy = self.mousey - self.rect.centery
+        self.length = math.sqrt( self.dx**2 + self.dy**2 )
+        self.factor = 10
+        '''
+        print('=====')
+        print('length = ' + str(self.length))
+        print('dx ' + str(self.factor*(self.dx/self.length)))
+        print('dy ' + str(self.factor*(self.dy/self.length)))
+        print('=====')
+        '''
 
     def update(self):
         """ Move the bullet. """
-        self.rect.y -= 3
 
-#============================================================================
+        self.rect.x += self.factor*(self.dx/self.length)
+        self.rect.y += self.factor*(self.dy/self.length)
 
 
-pygame.init()       #Initialize pygame module (required before calling any pygame stuff)
+#=================================FUNCTIONS=====================================
+def createBullet():
+    bullet = Bullet()
+    sound_gunshot = pygame.mixer.Sound('sounds/gunshot.ogg')
+    sound_gunshot.play()
+    # Set the bullet so it is where the player is
+    bullet.rect.x = soldier1.rect.x
+    bullet.rect.y = soldier1.rect.y
+    # Add the bullet to the lists
+    all_sprites_list.add(bullet)
+    bullet_list.add(bullet)
+
+#=============================INITIALIZATION=====================================
+pygame.init()       #Initialize pygame module (required before calling any pygame stuff
+#pygame.mixer.music.load('sounds/musicfile_here.mp3') #Background music
+#pygame.mixer.music.play(loops = -1 ,start = 0.0)#-1 : inifinite loop
 FPS = 30 # frames per second setting
 fpsClock = pygame.time.Clock()
 #==============DEFINE COLORs================================================
@@ -86,14 +118,7 @@ while True:
         if event.type == MOUSEBUTTONDOWN:
             #print(pygame.mouse.get_pos())
             if pygame.mouse.get_pressed()[0] == 1: # (left mb,right mb, scroller?) -> (0/1,0/1,?)
-                bullet = Bullet()
-                # Set the bullet so it is where the player is
-                bullet.rect.x = soldier1.rect.x
-                bullet.rect.y = soldier1.rect.y
-                # Add the bullet to the lists
-                all_sprites_list.add(bullet)
-                bullet_list.add(bullet)
-                print('SHOOT')
+                createBullet()
 
     all_sprites_list.update() # This is a nice feature to quickly call the update()
     #method for all of the sprites in this list.
@@ -101,7 +126,7 @@ while True:
     # Calculate bullet trajectories (to come soon)
     for bullet in bullet_list:
         # Remove the bullet when out of bounds
-        if bullet.rect.y < -10:
+        if bullet.rect.y < -5 or bullet.rect.x < -5:
             bullet_list.remove(bullet)
             all_sprites_list.remove(bullet)
 
