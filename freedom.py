@@ -7,6 +7,10 @@ useful links (used/tweaked parts to implement here):
 https://www.pygame.org/docs
 http://programarcadegames.com/python_examples/f.php?file=bullets.py
 https://www.soundjay.com/gun-sound-effect.html(source of gunshot sound)
+https://www.youtube.com/watch?v=3RJx34kGRGk (start menu tutorial)
+https://www.youtube.com/watch?v=jh_m-Eytq0Q (buttons in start menu)
+https://images.fineartamerica.com/images-medium-large/lieutenant-general-george-patton-left-everett.jpg (image patton)
+
 '''
 
 import sys
@@ -15,8 +19,8 @@ import pygame
 from pygame.locals import *
 
 #=====================================CLASSES=================================
-display_pixel_width = 600
-display_pixel_height = 600
+display_pixel_width = 700
+display_pixel_height = 546
 
 class Soldier(pygame.sprite.Sprite):
     """ This is the soldier class """
@@ -67,6 +71,12 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.x += self.factor*(self.dx/self.length)
         self.rect.y += self.factor*(self.dy/self.length)
 
+class Background(pygame.sprite.Sprite):
+    def __init__(self, image_file, location):
+        pygame.sprite.Sprite.__init__(self)  #call Sprite initializer
+        self.image = pygame.image.load(image_file).convert()
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = location
 
 #=================================FUNCTIONS=====================================
 def createBullet():
@@ -80,6 +90,33 @@ def createBullet():
     all_sprites_list.add(bullet)
     bullet_list.add(bullet)
 
+def createButton(btn_text, pos_tuple, inact_color, act_color):
+    '''
+    This function creates a button on the BACKGROUND_SURFACE.
+    When mouse hoovers over the button it can change color
+
+    The function returns 1/0 depending on whether or not mouse is on btn.
+
+    btn_Text: text displayed inside the button.
+    pos_tuple: (x,y,width,height).
+    inact_color: color when button is inactive.
+    act_color: color when button is active (moused over)
+
+    '''
+    rect_btn = pygame.draw.rect(BACKGROUND_SURFACE, inact_color, pos_tuple)
+    #interact with buttons:
+    mouse = pygame.mouse.get_pos()
+    if rect_btn.collidepoint(mouse) == 1:
+        pygame.draw.rect(BACKGROUND_SURFACE, act_color, pos_tuple) #redraw
+
+    #Put text inside the start and quit "buttons"
+    smallText = pygame.font.Font('freesansbold.ttf',20)
+    text_surf_btn, text_rect_btn = text_objects(btn_text, smallText)
+    text_rect_btn.center = (rect_btn.centerx,rect_btn.centery)
+    BACKGROUND_SURFACE.blit(text_surf_btn, text_rect_btn) # Actually draw(blit) it.
+
+    return rect_btn.collidepoint(mouse)
+
 #=============================INITIALIZATION=====================================
 pygame.init()       #Initialize pygame module (required before calling any pygame stuff
 #pygame.mixer.music.load('sounds/musicfile_here.mp3') #Background music
@@ -92,6 +129,10 @@ color_white = pygame.Color(255, 255, 255)
 color_red = pygame.Color(255,0,0)
 color_green = pygame.Color(0,255,0)
 color_blue = pygame.Color(0,0,255)
+inact_color_start_Btn = pygame.Color(200,200,200)
+inact_color_quit_Btn = pygame.Color(200,200,200)
+act_color_start_Btn = pygame.Color(100,100,100)
+act_color_quit_Btn = pygame.Color(100,100,100)
 
 #==============DEFINE DISPLAY SCREEN======================================
 BACKGROUND_SURFACE = pygame.display.set_mode((display_pixel_width,display_pixel_height))
@@ -107,35 +148,79 @@ bullet_list = pygame.sprite.Group()
 soldier1 = Soldier()
 all_sprites_list.add(soldier1)
 
-#pygame.draw.circle(BACKGROUND_SURFACE, color_black, (soldier1.x, soldier1.y), soldier1.pixel_radius, 0)
-#=================MAIN GAME LOOP===============================================
-while True:
-    #Event handler
-    for event in pygame.event.get():
-        if event.type == QUIT:
+#=====================START MENU============================================
+def text_objects(text, font):
+    textSurface = font.render(text, True, color_white)
+    return textSurface, textSurface.get_rect()
+
+def start_menu():
+    hold_menu = True
+    while hold_menu:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+
+        BackGround = Background('images/gen_troops.png', [0,0])
+        BACKGROUND_SURFACE.fill([255, 255, 255])
+        BACKGROUND_SURFACE.blit(BackGround.image, BackGround.rect)
+        #BACKGROUND_SURFACE.fill(color_blue)
+
+        largeText = pygame.font.Font('freesansbold.ttf',115)
+        TextSurf, TextRect = text_objects('Freedom', largeText)
+        TextRect.center = ((display_pixel_width/2) , (display_pixel_height/2))
+        BACKGROUND_SURFACE.blit(TextSurf, TextRect)
+        #Draw and interact with the start and quit buttons:
+        pos_start_Btn = ((display_pixel_width/3)-40,(display_pixel_height/1.4),100,50)
+        pos_quit_Btn = (2*(display_pixel_width/3)-40,(display_pixel_height/1.4),100,50)
+
+        #createButton(btn_text, pos_tuple, inact_color, act_color):
+        mouse_on_start = createButton('Start',pos_start_Btn, act_color_start_Btn, inact_color_start_Btn)
+        mouse_on_quit = createButton('Quit', pos_quit_Btn, act_color_quit_Btn, inact_color_quit_Btn)
+
+        if mouse_on_start and pygame.mouse.get_pressed()[0] == 1:
+            game_loop()
+        if mouse_on_quit and pygame.mouse.get_pressed()[0] == 1:
             pygame.quit()
             sys.exit()
-        if event.type == MOUSEBUTTONDOWN:
-            #print(pygame.mouse.get_pos())
-            if pygame.mouse.get_pressed()[0] == 1: # (left mb,right mb, scroller?) -> (0/1,0/1,?)
-                print('draw box')
-        if event.type == pygame.KEYDOWN:
-            if event.key == K_SPACE:
-                createBullet()
 
-    all_sprites_list.update() # This is a nice feature to quickly call the update()
-    #method for all of the sprites in this list.
-
-    for bullet in bullet_list:
-        # Remove the bullet when out of bounds
-        if bullet.rect.y < -5 or bullet.rect.x < -5:
-            bullet_list.remove(bullet)
-            all_sprites_list.remove(bullet)
+        pygame.display.update()
+        fpsClock.tick(FPS)
 
 
-    BACKGROUND_SURFACE.fill(color_white)# Clear the screen
-    all_sprites_list.draw(BACKGROUND_SURFACE)# Draw all the sprites
+#pygame.draw.circle(BACKGROUND_SURFACE, color_black, (soldier1.x, soldier1.y), soldier1.pixel_radius, 0)
+#=================MAIN GAME LOOP===============================================
+def game_loop():
+    while True:
+        #Event handler
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == MOUSEBUTTONDOWN:
+                #print(pygame.mouse.get_pos())
+                if pygame.mouse.get_pressed()[0] == 1: # (left mb,right mb, scroller?) -> (0/1,0/1,?)
+                    print('draw box')
+            if event.type == pygame.KEYDOWN:
+                if event.key == K_SPACE:
+                    createBullet()
 
-    #Events handled and possibly game state changed: update display accordingly
-    pygame.display.flip()# Go ahead and update the screen with what we've drawn.
-    fpsClock.tick(FPS)
+        all_sprites_list.update() # This is a nice feature to quickly call the update()
+        #method for all of the sprites in this list.
+
+        for bullet in bullet_list:
+            # Remove the bullet when out of bounds
+            if bullet.rect.y < -5 or bullet.rect.x < -5:
+                bullet_list.remove(bullet)
+                all_sprites_list.remove(bullet)
+
+
+        BACKGROUND_SURFACE.fill(color_white)# Clear the screen
+        all_sprites_list.draw(BACKGROUND_SURFACE)# Draw all the sprites
+
+        #Events handled and possibly game state changed: update display accordingly
+        pygame.display.flip()# Go ahead and update the screen with what we've drawn.
+        fpsClock.tick(FPS)
+
+start_menu()
+game_loop()
