@@ -18,20 +18,24 @@ import math
 import pygame
 from pygame.locals import *
 
-#=====================================CLASSES=================================
+#=============some constant declaration or initiation=================
 display_pixel_width = 700
 display_pixel_height = 546
+initial_xy = None
+#=====================================CLASSES=================================
 
 class Soldier(pygame.sprite.Sprite):
     """ This is the soldier class """
     def __init__(self):
         super().__init__()
         #Create soldier sprite.
-        self.image = pygame.image.load('images/ball_black.png').convert() #image object is a surfaceS
+        self.image = pygame.image.load('images/unit_unselected.png').convert() #image object is a surfaceS
 
         self.rect = self.image.get_rect()
         self.rect.centerx = int(display_pixel_width/2)
         self.rect.centery = int(display_pixel_height/2)
+
+        self.is_selected = 0 # Used in the unitSelection function. Enabling movement & weapons.
 
     def update(self):
         pass
@@ -43,7 +47,7 @@ class Bullet(pygame.sprite.Sprite):
         super().__init__()
 
         #Create soldier sprite and resize it.
-        self.image = pygame.image.load('images/ball_black.png')#.convert()
+        self.image = pygame.image.load('images/bullet.png')#.convert()
         self.size = self.image.get_size() # return a width and height of the image
         self.image = pygame.transform.scale(self.image, (int(self.size[0]*0.2), int(self.size[1]*0.2)))
 
@@ -79,16 +83,18 @@ class Background(pygame.sprite.Sprite):
         self.rect.left, self.rect.top = location
 
 #=================================FUNCTIONS=====================================
-def createBullet():
-    bullet = Bullet()
-    sound_gunshot = pygame.mixer.Sound('sounds/gunshot.ogg')
-    sound_gunshot.play()
-    # Set the bullet so it is where the player is
-    bullet.rect.x = soldier1.rect.x
-    bullet.rect.y = soldier1.rect.y
-    # Add the bullet to the lists
-    all_sprites_list.add(bullet)
-    bullet_list.add(bullet)
+def createBullets():
+    for unit in unit_list:
+        if unit.is_selected:
+            bullet = Bullet()
+            sound_gunshot = pygame.mixer.Sound('sounds/gunshot.ogg')
+            sound_gunshot.play()
+            # Set the bullet so it is where the player is
+            bullet.rect.x = soldier1.rect.x
+            bullet.rect.y = soldier1.rect.y
+            # Add the bullet to the lists
+            all_sprites_list.add(bullet)
+            bullet_list.add(bullet)
 
 def createButton(btn_text, pos_tuple, inact_color, act_color):
     '''
@@ -117,6 +123,98 @@ def createButton(btn_text, pos_tuple, inact_color, act_color):
 
     return rect_btn.collidepoint(mouse)
 
+def getCoordinatesOfTopLeftCorner(x_i,y_i,x_m,y_m):
+    '''
+    To be commented
+    Find top left coordinates (surface requires these coordinates)
+    '''
+    if x_m - x_i > 0 and y_m - y_i > 0:
+        x_tl = x_i
+        y_tl = y_i
+    elif x_m - x_i < 0 and y_m - y_i > 0:
+        x_tl = x_m
+        y_tl = y_i
+    elif x_m - x_i > 0 and y_m - y_i < 0:
+        x_tl = x_i
+        y_tl = y_m
+    elif x_m - x_i < 0 and y_m - y_i < 0:
+        x_tl = x_m
+        y_tl = y_m
+    else:
+        x_tl = x_i
+        y_tl = x_i
+
+    return x_tl,y_tl
+
+def drawSelectionBox(initial_xy):
+    '''
+    To be commented
+    '''
+    if initial_xy != None and pygame.mouse.get_pressed()[0] == 1:
+        x_i = initial_xy[0] # x-coord. at time of mousebuttondown
+        y_i = initial_xy[1] # y-coord at time of mousebuttondown
+        x_m = pygame.mouse.get_pos()[0] # current x-coord. of mouse (still pressed)
+        y_m = pygame.mouse.get_pos()[1] # current y-coord. of mouse (still pressed)
+        xy_list = [x_i,y_i,x_m,y_m]
+
+
+        # non-functional but visible selection box (borders only)
+        # Create a total rectangle made up of 4 rectangles (cleaner draw in pygame)
+        pygame.draw.rect(BACKGROUND_SURFACE, color_green, pygame.Rect(x_i, y_i, (x_m-x_i), 1)) #Top of total rectangle
+        pygame.draw.rect(BACKGROUND_SURFACE, color_green, pygame.Rect(x_i, y_i, 1, (y_m-y_i))) #Left of total rectangle
+        pygame.draw.rect(BACKGROUND_SURFACE, color_green, pygame.Rect(x_m, y_i, 1, (y_m-y_i)))
+        pygame.draw.rect(BACKGROUND_SURFACE, color_green, pygame.Rect(x_i, y_m, (x_m-x_i), 1))
+        # Create a transparent green area within the rectangle defined above:
+        try:
+            SelBox_surface = pygame.Surface((int(math.fabs(x_m-x_i)),int(math.fabs(y_m-y_i)))) # Make a new surface of which we can change transparancy
+            SelBox_surface.set_alpha(40)                # alpha level
+            x_tl,y_tl = getCoordinatesOfTopLeftCorner(x_i,y_i,x_m,y_m)
+            selection_box = pygame.draw.rect(SelBox_surface, color_green, (0,0,int(math.fabs(x_m-x_i)),int(math.fabs(y_m-y_i))))
+            BACKGROUND_SURFACE.blit(SelBox_surface, (x_tl,y_tl))
+        except:
+            pass
+        unitSelection(selection_box, xy_list)
+
+def unitSelection(selection_box, xy_list):
+    '''
+    To be commented
+    old code (must be able to do it something like this instead of ugly shit down below)
+    for unit in unit_list:
+        if selection_box.colliderect(unit) == 1:
+            unit.is_selected = 1
+            unit.image = pygame.image.load('images/unit_selected.png').convert()
+        elif selection_box.colliderect(unit) == 0:
+            unit.is_selected = 0
+            unit.image = pygame.image.load('images/unit_unselected.png').convert()
+    '''
+
+    for unit in unit_list:
+        x = unit.rect.centerx
+        y = unit.rect.centery
+        isInside = isInsideBox(x,y,xy_list)
+        if isInside == 1:
+            unit.is_selected = 1
+            unit.image = pygame.image.load('images/unit_selected.png').convert()
+        elif isInside == 0:
+            unit.is_selected = 0
+            unit.image = pygame.image.load('images/unit_unselected.png').convert()
+
+def isInsideBox(x,y,xy_list):
+    if xy_list[0] < xy_list[2]:
+        x_interval = range(xy_list[0] ,xy_list[2]+1)
+    elif xy_list[0] > xy_list[2]:
+        x_interval = range(xy_list[2] ,xy_list[0]+1)
+    if xy_list[1] < xy_list[3]:
+        y_interval = range(xy_list[1] ,xy_list[3]+1)
+    elif xy_list[1] > xy_list[3]:
+        y_interval = range(xy_list[3] ,xy_list[1]+1)
+
+    if x in x_interval and y in y_interval:
+        return 1
+    else:
+        return 0
+
+
 #=============================INITIALIZATION=====================================
 pygame.init()       #Initialize pygame module (required before calling any pygame stuff
 #pygame.mixer.music.load('sounds/musicfile_here.mp3') #Background music
@@ -144,9 +242,11 @@ BACKGROUND_SURFACE.fill(color_white)
 #initialize bullet list which is update in event handler.
 all_sprites_list = pygame.sprite.Group()
 bullet_list = pygame.sprite.Group()
+unit_list = pygame.sprite.Group()
 #Add soldier and put in sprites list
 soldier1 = Soldier()
 all_sprites_list.add(soldier1)
+unit_list.add(soldier1)
 
 #=====================START MENU============================================
 def text_objects(text, font):
@@ -154,8 +254,10 @@ def text_objects(text, font):
     return textSurface, textSurface.get_rect()
 
 def start_menu():
-    hold_menu = True
-    while hold_menu:
+    '''
+    This function is a loop which implements a start menu.
+    '''
+    while True:
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
@@ -192,19 +294,24 @@ def start_menu():
 #=================MAIN GAME LOOP===============================================
 def game_loop():
     while True:
-        #Event handler
+        BACKGROUND_SURFACE.fill(color_white)# Clear the screen
+
+        #=============Event handler===============
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+
             if event.type == MOUSEBUTTONDOWN:
-                #print(pygame.mouse.get_pos())
-                if pygame.mouse.get_pressed()[0] == 1: # (left mb,right mb, scroller?) -> (0/1,0/1,?)
-                    print('draw box')
+                if pygame.mouse.get_pressed()[0] == 1:
+                    initial_xy = pygame.mouse.get_pos() #used in drawSelectionBox()
+                    # which is called below in the game_loop()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == K_SPACE:
-                    createBullet()
+                    createBullets()
 
+        #=======SPRITES======================
         all_sprites_list.update() # This is a nice feature to quickly call the update()
         #method for all of the sprites in this list.
 
@@ -214,10 +321,15 @@ def game_loop():
                 bullet_list.remove(bullet)
                 all_sprites_list.remove(bullet)
 
-
-        BACKGROUND_SURFACE.fill(color_white)# Clear the screen
         all_sprites_list.draw(BACKGROUND_SURFACE)# Draw all the sprites
 
+        #=======SELECTION BOX================
+        try:
+            #This will fail when we have not had a MOUSEBUTTONDOWN event.
+            drawSelectionBox(initial_xy)
+        except:
+            pass
+        #=========UPDATE DISPLAY AND REFRESH RATE==============
         #Events handled and possibly game state changed: update display accordingly
         pygame.display.flip()# Go ahead and update the screen with what we've drawn.
         fpsClock.tick(FPS)
