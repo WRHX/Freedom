@@ -1,7 +1,7 @@
 '''
 Project initiation date: December 22 2017
 Author: Wouter Haaxman
-Regarding project code: Copyright 2017, Wouter Haaxman, All rights reserved.
+Copyright: None
 
 useful links (used/tweaked parts to implement here):
 https://www.pygame.org/docs
@@ -11,6 +11,8 @@ https://www.youtube.com/watch?v=3RJx34kGRGk (start menu tutorial)
 https://www.youtube.com/watch?v=jh_m-Eytq0Q (buttons in start menu)
 https://images.fineartamerica.com/images-medium-large/lieutenant-general-george-patton-left-everett.jpg (image patton)
 http://ezide.com/games/writing-games.html#hModel(restructuring code to implement MVC & Mediator design patterns)
+http://www.pygame.org/pcr/box_selection/index.php(code for unit selection box, I made my own in the pre-MVC version (which looks nicer
+graphically) but the code for this one seems more organized, plus I did not know of the MOUSEMOTION event.)
 
 Syntax rules (for practice in following rules):
 Classes: Words joined together, each word starts with an upper-case letter.
@@ -68,7 +70,6 @@ class GamePausedEvent(Event):
         self.name = "Game Paused Event"
         self.game = game
                                         #----UNIT EVENTS------------------------
-
 class UnitSpawnEvent(Event):
     '''this event occurs when a unit is spawned'''
     def __init__(self, unit):
@@ -100,6 +101,11 @@ class UnitShootBulletEvent(Event):
         self.name = "Unit Shoot Bullet Event"
         self.unit = unit
         self.shoot_to_xy = shoot_to_xy
+                                        #----OTHER EVENTS/REQUESTS--------------
+class GetMousePositionRequest(Event):
+    def __init__(self, initial_xy):
+        self.name = "Get Mouse Position Request"
+        self.initial_xy = initial_xy
 
 #----------------------------MEDIATOR-------------------------------------------
 
@@ -168,7 +174,8 @@ class KeyBoardController:
                                 #------------------MOUSE------------------------
                 elif event.type == MOUSEBUTTONDOWN \
                     and pygame.mouse.get_pressed()[0] == 1:
-                        ev = GetMousePositionRequest()
+                        initial_xy = pygame.mouse.get_pos()
+                        ev = GetMousePositionRequest( initial_xy )
 
                 if ev:
                     self.evManager.Post( ev )
@@ -228,7 +235,7 @@ class BulletSprite(pygame.sprite.Sprite):
     def __init__(self, unit, shoot_to_xy):
         super().__init__()
         #Create soldier sprite and resize it.
-        self.image = pygame.image.load('images/bullet.png')#.convert()
+        self.image = pygame.image.load('images/bullet.png').convert()
         self.size = self.image.get_size() # return a width and height of the image
         self.image = pygame.transform.scale(self.image, (int(self.size[0]*0.2), int(self.size[1]*0.2)))
 
@@ -250,6 +257,10 @@ class BulletSprite(pygame.sprite.Sprite):
         """ Move the bullet. """
         self.rect.x += self.factor*(self.dx/self.length)
         self.rect.y += self.factor*(self.dy/self.length)
+
+class SelectionBox:
+    def __init__(self, initial_xy):
+
 
 #-------------------------------VIEW--------------------------------------------
 
@@ -291,6 +302,13 @@ class PygameView:
         '''
         pass
 
+    def DrawSelectionBox(self, initial_xy):
+        x_i = initial_xy[0] # x-coord. at time of mousebuttondown
+        y_i = initial_xy[1] # y-coord at time of mousebuttondown
+        x_m = pygame.mouse.get_pos()[0] # current x-coord. of mouse (still pressed)
+        y_m = pygame.mouse.get_pos()[1] # current y-coord. of mouse (still pressed)
+        xy_list = [x_i,y_i,x_m,y_m]
+
     def Notify(self, event):
         if isinstance(event, TickEvent):
             #Draw everything
@@ -313,6 +331,9 @@ class PygameView:
 
         elif isinstance(event, UnitShootBulletEvent):
             self.UnitShootBullet( event.unit, event.shoot_to_xy )
+
+        elif isinstance(event, GetMousePositionRequest):
+            self.DrawSelectionBox( event.initial_xy )
 
 
 #--------------------------------MODEL------------------------------------------
@@ -378,6 +399,8 @@ class Unit:
     STATE_ACTIVE = 1
     IS_NOT_SHOOTING = 0
     IS_SHOOTING = 1
+    IS_NOT_SELECTED = 0
+    IS_SELECTED = 1
 
     def __init__(self, evManager):
 
@@ -390,6 +413,7 @@ class Unit:
         self.current_y = int(display_pixel_height/2)
         self.go_to_x = None
         self.go_to_y = None
+        self.is_selected = Unit.IS_NOT_SELECTED
 
     def __str__(self):
         return '<Unit %s>' % id(self)
